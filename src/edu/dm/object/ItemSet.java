@@ -19,7 +19,10 @@ public class ItemSet
 		return count;
 	}
 	
-	
+	public void setCount(float count) {
+		this.count = count;
+	}
+
 	public String getFirstItem()
 	{
 		return itemSet.split(",")[0];
@@ -58,9 +61,4 @@ public class ItemSet
 			return false;
 		return true;
 	}
-	
-	
-	
-	
-
 }

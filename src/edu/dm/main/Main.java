@@ -88,7 +88,7 @@ public class Main
 	{
 		try 
 		{
-			BufferedReader br = new BufferedReader(new FileReader(new File("data-1.txt")));
+			BufferedReader br = new BufferedReader(new FileReader(new File("data-beef.txt")));
 			String line;
 			System.out.println("Transactions:");
 			
@@ -119,7 +119,7 @@ public class Main
 		try 
 		{
 			BufferedReader br = new BufferedReader(
-					new FileReader(new File("para-1.txt")));
+					new FileReader(new File("para-beef.txt")));
 			String line;
 			String itemName;
 			float mis;

@@ -7,10 +7,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.ListIterator;
 
 import org.apache.log4j.Logger;
 
+import edu.dm.object.AssociationRule;
 import edu.dm.object.Item;
 import edu.dm.object.ItemSet;
 import edu.dm.object.Transaction;
@@ -41,10 +41,7 @@ public class Logic
 		{
 			ItemList.get(i).setOrder(i);
 		}
-
-		//		logger.debug(itemList.toString());
-		//		logger.debug(transaction.toString());
-
+		
 		N = transaction.size();
 		F =  (List<ItemSet>[] )new ArrayList[(int)N];
 
@@ -58,31 +55,21 @@ public class Logic
 		logger.debug("L = " +L);
 		generateF1(L);
 		logger.debug("F1 = " + F[0]);
-		
-		int count = 0;
 
 		for ( int i = 1; !F[i-1].isEmpty(); i++ )
 		{
-			
 			if( i == 1)
 			{
 				generateLevelTwo(L);
 			}
 			else
 			{
-
 				generateOtherLevels(F[i-1],i);
 			}
 
-			pruneItemSetList(F[i]);			
-			//		
-			//			logger.debug("************************");
-			//			logger.debug(F[i].toString());
-
-			count++;
+			pruneItemSetList(F[i]);
 		}
-
-
+		
 		// print the results
 		try
 		{
@@ -96,15 +83,11 @@ public class Logic
 
 			FileWriter fw = new FileWriter(file);
 
-
-
-			for( int i = count ; i >=0 ; i--)
+			for( int i = 0 ; !F[i].isEmpty() ; i++)
 			{
-
-				
 					fw.write("No. of length "+ (i+1) +" frequent itemsets: " + F[i].size());
 					fw.write("\n");
-					System.out.println("No. of length "+ (i+1) +" frequent itemsets: " + F[i].size());
+					System.out.println("\nNo. of length "+ (i+1) +" frequent itemsets: " + F[i].size());
 
 					for ( int j = 0 ; j < F[i].size() ; j++)
 					{
@@ -113,28 +96,84 @@ public class Logic
 						System.out.println("{" + F[i].get(j).getItemSet() + "}: support-count=" +F[i].get(j).getCount());
 					}
 					fw.write("\n");
-				}
-
-				fw.close();
-			
+			}
+			fw.close();
 		}
 		catch(Exception e)
 		{
-
+			
 		}
-
-
+		
+		this.generateRules();
 	}
-
-
-
-
-
+	
+	public void generateRules(){
+		
+		List<AssociationRule> ruleList = new ArrayList<AssociationRule>();
+		
+		for(int i = 1; i >= 1 && !(this.F[i] == null); i++){
+			
+			for(ItemSet itemset : this.F[i]){
+				
+				String[] items = itemset.getItemSet().split(",");
+				
+				for(int first = 0; first < items.length; first++){
+					
+					int rest = 0;
+					AssociationRule rule = new AssociationRule();
+					
+					while(rest < items.length){
+						if(rest == first)
+							rest++;
+						if(rest == items.length)
+							break;
+						
+						//only first item is the consequence
+						rule.setConsequence(items[first]);
+						
+						//rest forms the premise
+						StringBuffer premise = new StringBuffer(items[rest]);
+						for(int j = rest+1; j < items.length ; j++){
+							if(j == first)
+								continue;
+							premise.append("," + items[j]);
+						}
+						
+						rule.setPremise(premise.toString());
+						
+						float premiseCount = 0;
+						
+//						if(!rule.getPremise().equals(rule.getConsequence())){
+						//get count from previous F set
+							for(ItemSet previousItemSet : this.F[i-1]){
+								if(previousItemSet.equals(new ItemSet(premise.toString(), 0))){
+									premiseCount = previousItemSet.getCount();
+									break;
+								}
+							}
+							//add the rule only if confidence>SDC and if rule is not already added.
+							if(premiseCount > 0 && !ruleList.contains(rule)
+									&& itemset.getCount() / premiseCount >= this.SDC){
+								
+								ruleList.add(rule);
+							}
+							break;
+//						}
+					}
+				}
+			}
+		}
+		System.out.println("\nrule list size: " + ruleList.size() + "\n");
+		
+		for(AssociationRule rule : ruleList){
+			System.out.println(rule);
+		}
+	}
+	
 	// returns  list of j.count/n >= MIS (i)
 	private List<Item> initPass()
 	{
 		List<Item> L = new ArrayList<Item>();
-
 
 		Item i = null;
 
@@ -156,8 +195,6 @@ public class Logic
 				}
 			}
 		}
-
-
 		return L;
 	}
 
@@ -181,14 +218,12 @@ public class Logic
 		}
 	}
 
-
 	private void generateF1(List<Item> L)
 	{
 		List<ItemSet> f1 = new ArrayList<ItemSet>();
 
 		for(Item item : L)
 		{
-
 			ItemSet itemSet = new ItemSet(item.getItemValue(), item.getCount());
 			f1.add(itemSet);
 		}
@@ -214,14 +249,13 @@ public class Logic
 							&& this.roundOff( (Math.abs( item2.getCount()/N - item.getCount()/N ) ), 2)  <= SDC)
 						//if( ( item2.getCount()/N >= item.getMis() ))
 					{
-						two.add(createNewItemSet(item.getItemValue() + "," + item2.getItemValue()));
+						two.add(createNewItemSet(item.getItemValue() + "," + item2.getItemValue(), 0));
 					}
 				}
 			}
 		}
 
 		F[1] = two;
-
 	}
 
 	private void generateOtherLevels(List<ItemSet> level,int levelNumber )
@@ -255,7 +289,7 @@ public class Logic
 
 							if (checkNewItemSetValid(newItemSet, level))
 							{
-								newLevel.add(createNewItemSet(newItemSet));
+								newLevel.add(createNewItemSet(newItemSet, levelNumber));
 							}
 						}
 						else
@@ -263,8 +297,7 @@ public class Logic
 							logger.error("this should not happen");
 						}
 					}
-				}				
-
+				}
 			}
 		}
 
@@ -274,10 +307,11 @@ public class Logic
 	public float roundOff(float value, int precision) {
 		float p = (float)Math.pow(10,precision);
 		float temp = Math.round(value * p);
+		
 		return (float)temp/p;
 	}
 
-	private ItemSet createNewItemSet(String newItemSet)
+	private ItemSet createNewItemSet(String newItemSet, int levelNumber)
 	{
 		ItemSet itemSet = null;
 		int count = 0 ;
@@ -286,18 +320,21 @@ public class Logic
 		{
 			if (transction.containsItemSet(newItemSet))
 				count++;
-		}
 
+			if(levelNumber > 0){
+				ItemSet c1 = new ItemSet(newItemSet.substring(newItemSet.indexOf(",")), 0);
+				for(ItemSet item : F[levelNumber-1]){
+					if(item.getItemSet().equals(c1.getItemSet()))  //item.equals(c1);
+						item.setCount(item.getCount()+1);
+				}
+			}
+		}
 		itemSet = new ItemSet(newItemSet, count);
 
 		return itemSet;
 	}
-
-
-
-
+		
 	// check whether the new itemset is valid () line 8-11
-
 	private boolean checkNewItemSetValid(String newItemSet,List<ItemSet> level)
 	{
 		boolean status = true;
@@ -320,8 +357,6 @@ public class Logic
 						s.append("," + item[j]);
 				}
 			}
-
-
 			if (  (i != 0) ||  ( ItemHash.get(item[0]).getMis() == ItemHash.get(item[1]).getMis()) )
 			{
 				ItemSet temp = new ItemSet(s.toString(), 0f);
@@ -333,10 +368,6 @@ public class Logic
 				}
 			}
 		}
-
 		return status;
 	}
-
-
-
 }
