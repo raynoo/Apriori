@@ -1,0 +1,7 @@
+SDC = 0.8
+MIS(Beef) = 0.3
+MIS(Chicken) = 0.3
+MIS(Clothes) = 0.3
+MIS(Milk) = 0.3
+MIS(Cheese) = 0.3
+MIS(Boots) = 0.3
