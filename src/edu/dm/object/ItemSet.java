@@ -22,6 +22,10 @@ public class ItemSet
 	public void setCount(float count) {
 		this.count = count;
 	}
+	
+	public void incrementCount(){
+		this.count++;
+	}
 
 	public String getFirstItem()
 	{

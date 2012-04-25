@@ -25,38 +25,48 @@ public class Logic
 	List<Item> ItemList;     // sorted item according to mis values
 	HashMap<String, Item> ItemHash = new HashMap<String, Item>();
 
-	float N,SDC;
+	float N, SDC;
 
 	List<ItemSet> F[];
+	
+	List<AssociationRule> ruleList = new ArrayList<AssociationRule>();
 
-	public Logic(List<Item> itemList,float sdc,List<Transaction> transaction)
+	public Logic(List<Item> itemList, float sdc, List<Transaction> transaction)
 	{
 		this.SDC = sdc;
 		this.ItemList = itemList;
 		this.TransactionList = transaction;
 		Collections.sort(ItemList);
 
+		this.startApriori();
+	}
+	
+	public void startApriori(){
+		
+		System.out.println("Starting Apriori...\n");
+		
 		// give order number to the list
 		for( int i = 0 ; i < ItemList.size() ; i++)
 		{
 			ItemList.get(i).setOrder(i);
 		}
 		
-		N = transaction.size();
+		N = this.TransactionList.size();
 		F =  (List<ItemSet>[] )new ArrayList[(int)N];
 
 		//populate the hash map
-		for(Item item : itemList)
+		for(Item item : this.ItemList)
 		{
 			ItemHash.put(item.getItemValue(), item);
 		}
 
 		List<Item> L = initPass();
-		logger.debug("L = " +L);
+		logger.debug("L (" + L.size() + ") = " + L + "\n");
 		generateF1(L);
-		logger.debug("F1 = " + F[0]);
+		logger.debug("F1 (" + F[0].size() + ") = " + F[0] + "\n");
 
 		for ( int i = 1; !F[i-1].isEmpty(); i++ )
+//		for ( int i = 1; i < 3 ; i++ )
 		{
 			if( i == 1)
 			{
@@ -70,6 +80,12 @@ public class Logic
 			pruneItemSetList(F[i]);
 		}
 		
+		this.generateRules();
+		
+		this.printResult();
+	}
+	
+	public void printResult(){
 		// print the results
 		try
 		{
@@ -97,40 +113,47 @@ public class Logic
 					}
 					fw.write("\n");
 			}
+			
+			System.out.println("\nNo. of rules generated: " + this.ruleList.size());
+			fw.write("No. of rules generated: " + this.ruleList.size() + "\n");
+			
+			for(AssociationRule rule : this.ruleList){
+				fw.write(rule.toString() + "\n");
+				System.out.println(rule.toString());
+			}
+			
 			fw.close();
 		}
 		catch(Exception e)
 		{
-			
+			e.printStackTrace();
 		}
-		
-		this.generateRules();
 	}
 	
 	public void generateRules(){
 		
-		List<AssociationRule> ruleList = new ArrayList<AssociationRule>();
+		System.out.println("\nGenerating association rules");
 		
 		for(int i = 1; i >= 1 && !(this.F[i] == null); i++){
 			
 			for(ItemSet itemset : this.F[i]){
-				
+
 				String[] items = itemset.getItemSet().split(",");
-				
+
 				for(int first = 0; first < items.length; first++){
-					
+
 					int rest = 0;
 					AssociationRule rule = new AssociationRule();
-					
+
 					while(rest < items.length){
 						if(rest == first)
 							rest++;
 						if(rest == items.length)
 							break;
-						
+
 						//only first item is the consequence
 						rule.setConsequence(items[first]);
-						
+
 						//rest forms the premise
 						StringBuffer premise = new StringBuffer(items[rest]);
 						for(int j = rest+1; j < items.length ; j++){
@@ -138,41 +161,38 @@ public class Logic
 								continue;
 							premise.append("," + items[j]);
 						}
-						
+
 						rule.setPremise(premise.toString());
-						
+
 						float premiseCount = 0;
-						
+
 //						if(!rule.getPremise().equals(rule.getConsequence())){
 						//get count from previous F set
-							for(ItemSet previousItemSet : this.F[i-1]){
-								if(previousItemSet.equals(new ItemSet(premise.toString(), 0))){
-									premiseCount = previousItemSet.getCount();
-									break;
-								}
+						for(ItemSet previousItemSet : this.F[i-1]){
+							if(previousItemSet.equals(new ItemSet(premise.toString(), 0))){
+								premiseCount = previousItemSet.getCount();
+								break;
 							}
-							//add the rule only if confidence>SDC and if rule is not already added.
-							if(premiseCount > 0 && !ruleList.contains(rule)
-									&& itemset.getCount() / premiseCount >= this.SDC){
-								
-								ruleList.add(rule);
-							}
-							break;
+						}
+						//add the rule only if confidence>SDC and if rule is not already added.
+						if(premiseCount > 0 && !this.ruleList.contains(rule)
+								&& itemset.getCount() / premiseCount >= this.SDC){
+							
+							this.ruleList.add(rule);
+						}
+						break;
 //						}
 					}
 				}
 			}
-		}
-		System.out.println("\nrule list size: " + ruleList.size() + "\n");
-		
-		for(AssociationRule rule : ruleList){
-			System.out.println(rule);
 		}
 	}
 	
 	// returns  list of j.count/n >= MIS (i)
 	private List<Item> initPass()
 	{
+		System.out.println("Initial Pass");
+		
 		List<Item> L = new ArrayList<Item>();
 
 		Item i = null;
@@ -200,6 +220,8 @@ public class Logic
 
 	private void pruneItemSetList(List<ItemSet> Flist)
 	{
+		System.out.println("\nPruning itemset list");
+		
 		Iterator<ItemSet> x= Flist.iterator();
 
 		while(x.hasNext())
@@ -220,6 +242,8 @@ public class Logic
 
 	private void generateF1(List<Item> L)
 	{
+		System.out.println("F1 Generation");
+		
 		List<ItemSet> f1 = new ArrayList<ItemSet>();
 
 		for(Item item : L)
@@ -234,37 +258,46 @@ public class Logic
 
 	private void generateLevelTwo(List<Item> oneLevel)
 	{
+		System.out.println("F2 Generation");
+		
 		List<ItemSet> two = new ArrayList<ItemSet>();
-
+		
 		for(int i = 0 ; i < oneLevel.size() ; i++)
+//		for(int i = 0 ; i < 100 ; i++)
 		{
 			Item item = oneLevel.get(i);
-			if(item.getCount()/N >= item.getMis())
+			
+			System.out.println("Adding item " + (i+1) + "... " + item.getItemValue());
+			
+			if(item.getCount() / N >= item.getMis())
 			{
 				for(int j = i+1 ; j < oneLevel.size() ; j++)
 				{
 					Item item2 = oneLevel.get(j);
 
-					if( ( item2.getCount()/N >= item.getMis() )  
-							&& this.roundOff( (Math.abs( item2.getCount()/N - item.getCount()/N ) ), 2)  <= SDC)
-						//if( ( item2.getCount()/N >= item.getMis() ))
+					if( ( item2.getCount() / this.N >= item.getMis() )
+							&& this.roundOff( (Math.abs( item2.getCount() / this.N - 
+									item.getCount() / this.N ) ), 2)  <= this.SDC)
 					{
-						two.add(createNewItemSet(item.getItemValue() + "," + item2.getItemValue(), 0));
+						two.add(this.createNewItemSet(item.getItemValue() + "," + item2.getItemValue(), 0));
 					}
 				}
 			}
 		}
-
 		F[1] = two;
 	}
 
-	private void generateOtherLevels(List<ItemSet> level,int levelNumber )
+	private void generateOtherLevels(List<ItemSet> level, int levelNumber)
 	{
+		System.out.println("\nF" + (levelNumber+1) + " Generation");
+		
 		List<ItemSet> newLevel = new ArrayList<ItemSet>();
 
 		for ( int i = 0 ; i < level.size() ; i++ )
 		{
 			ItemSet one = level.get(i);
+			
+			System.out.println("Adding item " + i + "... " + one);
 
 			for ( int j = i+1 ; j < level.size() ; j++ )
 			{
@@ -272,14 +305,14 @@ public class Logic
 
 				String first =  one.getItemSet().substring( 0, one.getItemSet().lastIndexOf(",") );
 
-				String second = two.getItemSet().substring( 0,two.getItemSet().lastIndexOf(",") );
+				String second = two.getItemSet().substring( 0, two.getItemSet().lastIndexOf(",") );
 
 				if(first.compareTo(second) == 0)
 				{
 					String firstBreak[] = one.getItemSet().split(",");
 					String secondBreak[] = two.getItemSet().split(",");
 
-					if( this.roundOff( Math.abs(( ItemHash.get( firstBreak[firstBreak.length-1] ).getCount()/N ) - 
+					if( roundOff( Math.abs(( ItemHash.get( firstBreak[firstBreak.length-1] ).getCount()/N ) - 
 							ItemHash.get( secondBreak[secondBreak.length-1] ).getCount()/N ), 2 ) <= SDC )
 					{
 
@@ -300,7 +333,6 @@ public class Logic
 				}
 			}
 		}
-
 		F[levelNumber] = newLevel;
 	}
 
@@ -311,10 +343,11 @@ public class Logic
 		return (float)temp/p;
 	}
 
-	private ItemSet createNewItemSet(String newItemSet, int levelNumber)
+	
+	public ItemSet createNewItemSet(String newItemSet, int levelNumber)
 	{
 		ItemSet itemSet = null;
-		int count = 0 ;
+		int count = 0;
 
 		for(Transaction transction : TransactionList)
 		{
@@ -325,7 +358,7 @@ public class Logic
 				ItemSet c1 = new ItemSet(newItemSet.substring(newItemSet.indexOf(",")), 0);
 				for(ItemSet item : F[levelNumber-1]){
 					if(item.getItemSet().equals(c1.getItemSet()))  //item.equals(c1);
-						item.setCount(item.getCount()+1);
+						item.incrementCount();
 				}
 			}
 		}

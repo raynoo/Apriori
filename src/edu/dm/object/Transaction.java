@@ -1,16 +1,14 @@
 package edu.dm.object;
 
-
-import java.util.*;
+import java.util.Set;
 
 public class Transaction
 {
-	List<String> trans;
+	Set<String> trans;
 	
-	public Transaction(List<String> trans) 
+	public Transaction(Set<String> trans) 
 	{
 		this.trans = trans;
-		
 	}
 	
 	public boolean containsItemSet(String itemSet)
@@ -27,12 +25,6 @@ public class Transaction
 				break;
 			}
 		}
-		
 		return status;
 	}
-
-	
-	
-	
-
 }
